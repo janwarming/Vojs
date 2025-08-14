@@ -1,0 +1,6 @@
+Proxy Broser shall have a image tab that shows all image files, and a video tab that show all video files, and a audio tab that shows all audio files. ALT texts for all files shall be used as a description for the file.
+
+Search Engine does not work with DuckDuckGo
+
+Desktop can only show 5 columns of icons
+
