@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yahoo Finance Market Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: white;
+            overflow-x: auto;
+        }
+
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 0;
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .status-connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-loading {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .refresh-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50px;
+            padding: 12px 24px;
+            color: white;
+            cursor: pointer;
+            backdrop-filter: blur(15px);
+            transition: all 0.3s ease;
+            font-weight: 600;
+            z-index: 100;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .api-info {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 1.5rem;
+            margin: 50px 0;
+            opacity: 0.8;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .table-container {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .market-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1rem;
+        }
+
+        .market-table thead {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .market-table th {
+            padding: 20px 12px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+            white-space: nowrap;
+        }
+
+        .market-table th:nth-child(4),
+        .market-table th:nth-child(7) {
+            text-align: right;
+        }
+
+        .market-table th:nth-child(5),
+        .market-table th:nth-child(6),
+        .market-table th:nth-child(8) {
+            text-align: center;
+        }
+
+        .market-table tbody tr {
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .market-table tbody tr:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateX(5px);
+        }
+
+        .market-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .market-table td {
+            padding: 18px 12px;
+            vertical-align: middle;
+        }
+
+        .flag-cell {
+            text-align: center;
+            width: 50px;
+        }
+
+        .flag {
+            font-size: 1.6rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .name-cell {
+            width: 200px;
+        }
+
+        .index-name {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 2px;
+        }
+
+        .index-desc {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .country-cell {
+            width: 130px;
+            font-size: 0.85rem;
+        }
+
+        .price-cell {
+            width: 110px;
+            text-align: right;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .change-cell {
+            width: 100px;
+            text-align: center;
+        }
+
+        .change-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .positive {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .negative {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .neutral {
+            background: rgba(156, 163, 175, 0.2);
+            color: #9ca3af;
+            border: 1px solid rgba(156, 163, 175, 0.3);
+        }
+
+        .marketcap-cell {
+            width: 100px;
+            text-align: right;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .range52w-cell {
+            width: 100px;
+            text-align: center;
+            font-size: 0.8rem;
+            line-height: 1.2;
+        }
+
+        .range52w-low {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .range52w-high {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .ath-cell {
+            width: 90px;
+            text-align: center;
+        }
+
+        .ath-badge {
+            display: inline-block;
+            padding: 5px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            min-width: 55px;
+            text-align: center;
+        }
+
+        .ath-green {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .ath-yellow {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .ath-red {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            color: #ef4444;
+        }
+
+        .last-updated {
+            text-align: center;
+            margin-top: 20px;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 30px;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .yahoo-badge {
+            display: inline-block;
+            background: rgba(138, 43, 226, 0.2);
+            color: #8a2be2;
+            font-size: 0.65rem;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+
+        .alpha-badge {
+            display: inline-block;
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            font-size: 0.65rem;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .market-table th,
+            .market-table td {
+                padding: 12px 8px;
+                font-size: 0.85rem;
+            }
+            
+            .header h1 {
+                font-size: 2.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .market-table {
+                font-size: 0.75rem;
+            }
+            
+            .market-table th,
+            .market-table td {
+                padding: 10px 6px;
+            }
+            
+            .refresh-btn {
+                position: static;
+                margin: 20px auto;
+                display: block;
+                width: fit-content;
+            }
+            
+            .status-indicator {
+                position: static;
+                margin: 20px auto;
+                display: block;
+                width: fit-content;
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Yahoo Finance Tracker</h1>
+            <p>Multi-source real-time data with calculated market cap</p>
+        </div>
+
+        <div class="api-info">
+            <strong>📈 Enhanced with Multiple Data Sources:</strong> 
+            Using Yahoo Finance v8 Chart API for price data + Alpha Vantage API for market cap/shares outstanding. Market cap fetched directly or calculated as Price × Shares Outstanding. Includes indices, futures, major tech stocks, and crypto.
+        </div>
+
+        <div class="status-indicator" id="statusIndicator">
+            🔄 Initializing...
+        </div>
+
+        <button class="refresh-btn" onclick="refreshAllData()" id="refreshBtn">
+            Refresh Data
+        </button>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading from multiple financial APIs...</p>
+        </div>
+
+        <div id="error-container"></div>
+
+        <div id="table-container" class="table-container" style="display: none;">
+            <table class="market-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Country</th>
+                        <th>Price</th>
+                        <th>Day Change</th>
+                        <th>Day Change %</th>
+                        <th>Market Cap</th>
+                        <th>52W Range</th>
+                        <th>% 52W High</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Data will be populated here -->
+                </tbody>
+            </table>
+            <div class="last-updated" id="lastUpdated"></div>
+        </div>
+
+        <div class="footer">
+            <p><strong>🚀 Multi-Source Financial Data Strategy:</strong></p>
+            <p>📊 <strong>Indices:</strong> ^DJI (Dow), ^GSPC (S&P 500)</p>
+            <p>⚡ <strong>Futures:</strong> MNQ=F (NASDAQ), GC=F (Gold), SI=F (Silver)</p>
+            <p>📈 <strong>Stocks:</strong> NVDA, MSFT, AAPL, GOOGL, AMD, META, AMZN</p>
+            <p>🪙 <strong>Crypto:</strong> BTC-USD, ETH-USD</p>
+            <p style="margin-top: 10px; font-size: 0.8rem;">
+                <strong>Yahoo Finance Chart API + Alpha Vantage API</strong> • Market Cap = Price × Shares Outstanding • 52W Range<br>
+                <em>Alpha Vantage provides free market cap data with demo API key</em>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // CORS Proxy - using corsproxy.io which is more reliable
+        const CORS_PROXY = 'https://corsproxy.io/?';
+        
+        // Alternative proxies in case one fails
+        const PROXY_ALTERNATIVES = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+            'https://cors-anywhere.herokuapp.com/'
+        ];
+        
+        // Market definitions using Yahoo Finance symbols
+        const marketDefinitions = [
+            // Indices
+            { key: 'dji', symbol: '^DJI', flag: '🇺🇸', name: 'Dow Jones', desc: 'Dow Jones Industrial Average', country: 'United States', type: 'index' },
+            { key: 'gspc', symbol: '^GSPC', flag: '🇺🇸', name: 'S&P 500', desc: 'S&P 500 Index', country: 'United States', type: 'index' },
+            
+            // Futures
+            { key: 'nasdaq', symbol: 'MNQ=F', flag: '🇺🇸', name: 'NASDAQ-100', desc: 'Micro E-mini NASDAQ-100 Futures', country: 'United States', type: 'futures' },
+            { key: 'gold', symbol: 'GC=F', flag: '🥇', name: 'Gold', desc: 'Gold Futures (CME)', country: 'Global', type: 'futures' },
+            { key: 'silver', symbol: 'SI=F', flag: '🥈', name: 'Silver', desc: 'Silver Futures (CME)', country: 'Global', type: 'futures' },
+            
+            // Stocks
+            { key: 'nvda', symbol: 'NVDA', flag: '🇺🇸', name: 'NVIDIA', desc: 'NVIDIA Corporation', country: 'United States', type: 'stock' },
+            { key: 'msft', symbol: 'MSFT', flag: '🇺🇸', name: 'Microsoft', desc: 'Microsoft Corporation', country: 'United States', type: 'stock' },
+            { key: 'aapl', symbol: 'AAPL', flag: '🇺🇸', name: 'Apple', desc: 'Apple Inc.', country: 'United States', type: 'stock' },
+            { key: 'googl', symbol: 'GOOGL', flag: '🇺🇸', name: 'Alphabet', desc: 'Alphabet Inc. (Google)', country: 'United States', type: 'stock' },
+            { key: 'amd', symbol: 'AMD', flag: '🇺🇸', name: 'AMD', desc: 'Advanced Micro Devices', country: 'United States', type: 'stock' },
+            { key: 'meta', symbol: 'META', flag: '🇺🇸', name: 'Meta', desc: 'Meta Platforms (Facebook)', country: 'United States', type: 'stock' },
+            { key: 'amzn', symbol: 'AMZN', flag: '🇺🇸', name: 'Amazon', desc: 'Amazon.com Inc.', country: 'United States', type: 'stock' },
+            
+            // Crypto
+            { key: 'bitcoin', symbol: 'BTC-USD', flag: '🟠', name: 'Bitcoin', desc: 'Bitcoin USD', country: 'Global', type: 'crypto' },
+            { key: 'ethereum', symbol: 'ETH-USD', flag: '🔷', name: 'Ethereum', desc: 'Ethereum USD', country: 'Global', type: 'crypto' }
+        ];
+
+        let marketData = {};
+
+        // Utility functions
+        function formatNumber(num) {
+            if (num === null || num === undefined || isNaN(num)) return 'N/A';
+            return parseFloat(num).toLocaleString('en-US', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            });
+        }
+
+        function formatPrice(num, type) {
+            if (num === null || num === undefined || isNaN(num)) return 'N/A';
+            const formatted = parseFloat(num).toLocaleString('en-US', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            });
+            
+            if (type === 'crypto' || type === 'futures') {
+                return '$' + formatted;
+            } else if (type === 'index') {
+                return formatted; // Indices are just numbers
+            }
+            return '$' + formatted; // Stocks
+        }
+
+        function formatMarketCap(num) {
+            if (num === null || num === undefined || num === 0 || isNaN(num)) {
+                return 'N/A';
+            }
+            
+            if (num >= 1e12) {
+                return '$' + (num / 1e12).toFixed(2) + 'T';
+            } else if (num >= 1e9) {
+                return '$' + (num / 1e9).toFixed(2) + 'B';
+            } else if (num >= 1e6) {
+                return '$' + (num / 1e6).toFixed(2) + 'M';
+            }
+            return '$' + num.toFixed(2);
+        }
+
+        function formatChange(change) {
+            if (change === null || change === undefined || isNaN(change)) return 'N/A';
+            const sign = change >= 0 ? '+' : '';
+            return sign + parseFloat(change).toFixed(2);
+        }
+
+        function formatChangePercent(change) {
+            if (change === null || change === undefined || isNaN(change)) return 'N/A';
+            const sign = change >= 0 ? '+' : '';
+            return sign + parseFloat(change).toFixed(2) + '%';
+        }
+
+        function calculate52WeekStatus(currentPrice, high52w) {
+            if (!currentPrice || !high52w || isNaN(currentPrice) || isNaN(high52w)) return null;
+            const distance = ((currentPrice - high52w) / high52w) * 100;
+            return distance;
+        }
+
+        function get52WeekClass(distance) {
+            if (distance === null || distance === undefined || isNaN(distance)) return 'neutral';
+            if (distance >= -5) return 'ath-green';
+            if (distance >= -25) return 'ath-yellow';
+            return 'ath-red';
+        }
+
+        function getChangeClass(change) {
+            if (change === null || change === undefined || isNaN(change) || change === 0) return 'neutral';
+            return change >= 0 ? 'positive' : 'negative';
+        }
+
+        // Update status indicator
+        function updateStatus(status, message) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.className = 'status-indicator status-' + status;
+            indicator.textContent = message;
+            console.log('Status:', message);
+        }
+
+        // Fetch market cap and shares outstanding from Alpha Vantage API (free tier available)
+        async function fetchMarketDataFromAlphaVantage(symbol) {
+            // Skip for indices, futures, and crypto
+            if (symbol.includes('^') || symbol.includes('=F') || symbol.includes('-USD')) {
+                return { marketCap: null, sharesOutstanding: null };
+            }
+
+            try {
+                // Alpha Vantage Company Overview API (provides MarketCapitalization and SharesOutstanding)
+                // Using demo key for testing - users can get free key at alphavantage.co
+                const alphaVantageKey = 'demo'; // Replace with user's free API key
+                let response;
+                
+                try {
+                    // Alpha Vantage is CORS-friendly, try direct request first
+                    const alphaUrl = `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${symbol}&apikey=${alphaVantageKey}`;
+                    response = await fetch(alphaUrl);
+                } catch (corsError) {
+                    console.log(`Direct Alpha Vantage request failed for ${symbol}, trying with proxy...`);
+                    // Fallback to proxy if needed
+                    for (let proxyIndex = 0; proxyIndex < PROXY_ALTERNATIVES.length; proxyIndex++) {
+                        try {
+                            const proxy = PROXY_ALTERNATIVES[proxyIndex];
+                            const alphaUrl = `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${symbol}&apikey=${alphaVantageKey}`;
+                            const proxyUrl = proxy + encodeURIComponent(alphaUrl);
+                            response = await fetch(proxyUrl);
+                            if (response.ok) break;
+                        } catch (proxyError) {
+                            continue;
+                        }
+                    }
+                }
+
+                if (!response || !response.ok) {
+                    console.log(`❌ Alpha Vantage request failed for ${symbol}: ${response?.status}`);
+                    return { marketCap: null, sharesOutstanding: null };
+                }
+
+                const data = await response.json();
+                console.log(`📊 Alpha Vantage overview data for ${symbol}:`, data);
+
+                // Check for API limit message
+                if (data.Note || data.Information) {
+                    console.log(`⚠️ Alpha Vantage API limit reached for ${symbol}:`, data.Note || data.Information);
+                    return { marketCap: null, sharesOutstanding: null };
+                }
+
+                let marketCap = null;
+                let sharesOutstanding = null;
+
+                // Get market cap (already calculated by Alpha Vantage)
+                if (data.MarketCapitalization && data.MarketCapitalization !== 'None') {
+                    marketCap = parseInt(data.MarketCapitalization);
+                    console.log(`✅ Market cap from Alpha Vantage for ${symbol}: ${marketCap}`);
+                }
+
+                // Get shares outstanding for backup calculation
+                if (data.SharesOutstanding && data.SharesOutstanding !== 'None') {
+                    sharesOutstanding = parseInt(data.SharesOutstanding);
+                    console.log(`✅ Shares outstanding from Alpha Vantage for ${symbol}: ${sharesOutstanding}`);
+                }
+
+                return { marketCap, sharesOutstanding };
+
+            } catch (error) {
+                console.log(`❌ Alpha Vantage API error for ${symbol}:`, error);
+                return { marketCap: null, sharesOutstanding: null };
+            }
+        }
+
+        // Fetch data from Yahoo Finance v8 Chart API - reliable for price data
+        async function fetchYahooFinanceData(symbol) {
+            for (let proxyIndex = 0; proxyIndex < PROXY_ALTERNATIVES.length; proxyIndex++) {
+                try {
+                    console.log(`Fetching ${symbol} from Yahoo Finance v8 Chart API (proxy ${proxyIndex + 1})...`);
+                    
+                    const proxy = PROXY_ALTERNATIVES[proxyIndex];
+                    
+                    // Use Yahoo Finance v8 Chart API - more reliable, no authentication needed
+                    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1y&includePrePost=false`;
+                    const proxyUrl = proxy + encodeURIComponent(yahooUrl);
+                    
+                    const response = await fetch(proxyUrl);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log(`📊 Raw v8 chart data for ${symbol}:`, data);
+                    
+                    if (data.chart && data.chart.result && data.chart.result.length > 0) {
+                        const result = data.chart.result[0];
+                        const meta = result.meta;
+                        
+                        // Get current price
+                        let currentPrice = meta.regularMarketPrice || meta.previousClose;
+                        
+                        // Try to get previous close and calculate change
+                        let previousClose = meta.previousClose;
+                        let change = 0;
+                        let changePercent = 0;
+                        
+                        // If we have historical data, use the last two data points
+                        if (result.indicators && result.indicators.quote && result.indicators.quote[0]) {
+                            const quotes = result.indicators.quote[0];
+                            
+                            if (quotes.close && quotes.close.length >= 2) {
+                                // Get the most recent closing prices
+                                const closes = quotes.close.filter(c => c !== null && !isNaN(c));
+                                if (closes.length >= 2) {
+                                    currentPrice = closes[closes.length - 1];
+                                    previousClose = closes[closes.length - 2];
+                                }
+                            }
+                        }
+                        
+                        // Calculate changes
+                        if (currentPrice && previousClose && !isNaN(currentPrice) && !isNaN(previousClose)) {
+                            change = currentPrice - previousClose;
+                            changePercent = (change / previousClose) * 100;
+                        }
+                        
+                        // Get 52-week high and low from historical data
+                        let fiftyTwoWeekHigh = null;
+                        let fiftyTwoWeekLow = null;
+                        
+                        if (result.indicators && result.indicators.quote && result.indicators.quote[0]) {
+                            const quotes = result.indicators.quote[0];
+                            
+                            if (quotes.high && quotes.high.length > 0) {
+                                const highs = quotes.high.filter(h => h !== null && !isNaN(h));
+                                if (highs.length > 0) {
+                                    fiftyTwoWeekHigh = Math.max(...highs);
+                                }
+                            }
+                            
+                            if (quotes.low && quotes.low.length > 0) {
+                                const lows = quotes.low.filter(l => l !== null && !isNaN(l));
+                                if (lows.length > 0) {
+                                    fiftyTwoWeekLow = Math.min(...lows);
+                                }
+                            }
+                        }
+                        
+                        // Also try to get from meta if available
+                        if (!fiftyTwoWeekHigh && meta.fiftyTwoWeekHigh) {
+                            fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh;
+                        }
+                        if (!fiftyTwoWeekLow && meta.fiftyTwoWeekLow) {
+                            fiftyTwoWeekLow = meta.fiftyTwoWeekLow;
+                        }
+                        
+                        const resultData = {
+                            price: currentPrice,
+                            change: change,
+                            changePercent: changePercent,
+                            marketCap: null, // Will be calculated if we get shares outstanding
+                            volume: meta.regularMarketVolume || null,
+                            fiftyTwoWeekHigh: fiftyTwoWeekHigh,
+                            fiftyTwoWeekLow: fiftyTwoWeekLow,
+                            symbol: meta.symbol || symbol,
+                            sharesOutstanding: null // Will be fetched separately for stocks
+                        };
+                        
+                        console.log(`✅ ${symbol} v8 chart parsed data:`, resultData);
+                        
+                        return resultData;
+                    } else {
+                        throw new Error('Invalid response format from v8 Chart API');
+                    }
+                    
+                } catch (error) {
+                    console.error(`❌ Error fetching ${symbol} with proxy ${proxyIndex + 1}:`, error);
+                    
+                    // If this was the last proxy, return null
+                    if (proxyIndex === PROXY_ALTERNATIVES.length - 1) {
+                        return null;
+                    }
+                    // Otherwise, try the next proxy
+                    continue;
+                }
+            }
+            
+            return null;
+        }
+
+        // Create table row
+        function createTableRow(market, data) {
+            const row = document.createElement('tr');
+            row.className = 'fade-in';
+            row.setAttribute('data-market', market.key);
+            
+            const price = formatPrice(data.price, market.type);
+            const change = formatChange(data.change);
+            const changePercent = formatChangePercent(data.changePercent);
+            
+            // Show market cap with source badge
+            let marketCapDisplay = formatMarketCap(data.marketCap);
+            let marketCapBadge = '';
+            if (data.marketCap) {
+                marketCapBadge = '<span class="alpha-badge">AV</span>';
+            }
+            
+            // Calculate 52-week high status
+            const high52wDistance = calculate52WeekStatus(data.price, data.fiftyTwoWeekHigh);
+            const high52wText = high52wDistance !== null ? 
+                (high52wDistance >= 0 ? '+' : '') + high52wDistance.toFixed(1) + '%' : 'N/A';
+            const high52wClass = get52WeekClass(high52wDistance);
+            
+            // Format 52-week range
+            let range52w = 'N/A';
+            if (data.fiftyTwoWeekLow && data.fiftyTwoWeekHigh) {
+                const lowFormatted = data.fiftyTwoWeekLow.toFixed(2);
+                const highFormatted = data.fiftyTwoWeekHigh.toFixed(2);
+                range52w = `<div class="range52w-low">${lowFormatted}</div><div class="range52w-high">${highFormatted}</div>`;
+            }
+            
+            // Debug log to see what data we actually have
+            console.log(`📊 Row data for ${market.symbol}:`, {
+                price: data.price,
+                change: data.change,
+                changePercent: data.changePercent,
+                marketCap: data.marketCap,
+                sharesOutstanding: data.sharesOutstanding,
+                fiftyTwoWeekHigh: data.fiftyTwoWeekHigh,
+                fiftyTwoWeekLow: data.fiftyTwoWeekLow
+            });
+            
+            row.innerHTML = `
+                <td class="flag-cell"><div class="flag">${market.flag}</div></td>
+                <td class="name-cell">
+                    <div class="index-name">${market.name}<span class="yahoo-badge">API</span></div>
+                    <div class="index-desc">${market.desc}</div>
+                </td>
+                <td class="country-cell">${market.country}</td>
+                <td class="price-cell">${price}</td>
+                <td class="change-cell">
+                    <span class="change-badge ${getChangeClass(data.change)}">${change}</span>
+                </td>
+                <td class="change-cell">
+                    <span class="change-badge ${getChangeClass(data.changePercent)}">${changePercent}</span>
+                </td>
+                <td class="marketcap-cell">${marketCapDisplay}${marketCapBadge}</td>
+                <td class="range52w-cell">${range52w}</td>
+                <td class="ath-cell">
+                    <span class="ath-badge ${high52wClass}">${high52wText}</span>
+                </td>
+            `;
+            
+            return row;
+        }
+
+        // Load all market data
+        async function loadAllData() {
+            console.log('🚀 Starting multi-source data load with Yahoo Finance + Alpha Vantage...');
+            
+            const loadingEl = document.getElementById('loading');
+            const containerEl = document.getElementById('table-container');
+            const tableBody = document.getElementById('table-body');
+            const errorContainer = document.getElementById('error-container');
+            const refreshBtn = document.getElementById('refreshBtn');
+            
+            // Show loading state
+            loadingEl.style.display = 'block';
+            containerEl.style.display = 'none';
+            errorContainer.innerHTML = '';
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = 'Loading...';
+            
+            updateStatus('loading', '🔄 Loading from multiple APIs...');
+
+            try {
+                tableBody.innerHTML = '';
+                marketData = {};
+                
+                // Fetch symbols one by one with delays to avoid overwhelming proxies
+                let successCount = 0;
+                
+                for (let i = 0; i < marketDefinitions.length; i++) {
+                    const market = marketDefinitions[i];
+                    
+                    // Add delay between requests to be respectful to proxies
+                    if (i > 0) {
+                        await new Promise(resolve => setTimeout(resolve, 400));
+                    }
+                    
+                    updateStatus('loading', `🔄 Loading ${market.symbol}... (${i + 1}/${marketDefinitions.length})`);
+                    
+                    const data = await fetchYahooFinanceData(market.symbol);
+                    if (data) {
+                        // Try to fetch market cap and shares outstanding for stocks using Alpha Vantage API
+                        if (market.type === 'stock') {
+                            updateStatus('loading', `📊 Getting market data from Alpha Vantage for ${market.symbol}...`);
+                            
+                            // Get both market cap and shares outstanding from Alpha Vantage
+                            const alphaData = await fetchMarketDataFromAlphaVantage(market.symbol);
+                            
+                            if (alphaData.marketCap) {
+                                data.marketCap = alphaData.marketCap;
+                                console.log(`✅ Got market cap from Alpha Vantage for ${market.symbol}: ${alphaData.marketCap}`);
+                            } else if (alphaData.sharesOutstanding && data.price) {
+                                // Calculate market cap if we have shares outstanding but not direct market cap
+                                data.sharesOutstanding = alphaData.sharesOutstanding;
+                                data.marketCap = data.price * alphaData.sharesOutstanding;
+                                console.log(`✅ Calculated market cap for ${market.symbol}: ${data.marketCap} (Price: ${data.price} × Shares: ${alphaData.sharesOutstanding})`);
+                            }
+                            
+                            if (alphaData.sharesOutstanding) {
+                                data.sharesOutstanding = alphaData.sharesOutstanding;
+                            }
+                        }
+                        
+                        marketData[market.key] = data;
+                        const row = createTableRow(market, data);
+                        tableBody.appendChild(row);
+                        successCount++;
+                    }
+                }
+
+                console.log(`✅ Added ${successCount} rows from multiple APIs with calculated market caps`);
+                
+                if (successCount === 0) {
+                    throw new Error('No data could be loaded from the APIs');
+                }
+                
+                finishLoading();
+
+            } catch (error) {
+                console.error('❌ Error loading data:', error);
+                errorContainer.innerHTML = `
+                    <div class="error-message">
+                        <h3>Error Loading Data</h3>
+                        <p>Could not load data from financial APIs. This might be due to:</p>
+                        <ul style="text-align: left; margin: 10px 0;">
+                            <li>CORS proxy services are temporarily down</li>
+                            <li>API rate limiting from Yahoo Finance or Alpha Vantage</li>
+                            <li>Network connectivity issues</li>
+                            <li>Browser blocking third-party requests</li>
+                        </ul>
+                        <p>The tracker tries multiple data sources and proxy services automatically. Please try refreshing in a few moments.</p>
+                        <p><small>Error: ${error.message}</small></p>
+                    </div>
+                `;
+                updateStatus('error', '❌ Error');
+                finishLoading();
+            }
+        }
+
+        function finishLoading() {
+            console.log('🏁 Finishing load process...');
+            
+            const loadingEl = document.getElementById('loading');
+            const containerEl = document.getElementById('table-container');
+            const refreshBtn = document.getElementById('refreshBtn');
+            
+            document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString();
+            
+            loadingEl.style.display = 'none';
+            containerEl.style.display = 'block';
+            
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = 'Refresh Data';
+            
+            updateStatus('connected', '✅ Data Loaded');
+            
+            console.log('✅ Loading complete!');
+        }
+
+        // Refresh function
+        function refreshAllData() {
+            console.log('🔄 Manual refresh triggered');
+            loadAllData();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎯 Multi-Source Financial Tracker loaded (Yahoo Finance + Alpha Vantage)...');
+            updateStatus('loading', '🔄 Initializing...');
+            
+            setTimeout(() => {
+                loadAllData();
+            }, 500);
+            
+            // Auto-refresh every 5 minutes 
+            setInterval(() => {
+                console.log('⏰ Auto-refresh triggered');
+                loadAllData();
+            }, 300000);
+        });
+
+        // Debug function
+        window.debugMarketData = function() {
+            console.log('Current market data:', marketData);
+            console.log('Market definitions:', marketDefinitions);
+        };
+    </script>
+</body>
+</html>
