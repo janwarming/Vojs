@@ -1,0 +1,1320 @@
+<!--
+Changelog:
+- 2025-08-14 Initial version from filename version 104
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Harvester</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(45deg, #000011, #001122, #000033);
+            font-family: 'Courier New', monospace;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 20px;
+            max-width: 100%;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+        }
+
+        canvas {
+            border: 3px solid #44aaff;
+            background: linear-gradient(180deg, #000011, #001133, #000022);
+            box-shadow: 0 0 30px #44aaff, inset 0 0 20px rgba(68, 170, 255, 0.1);
+            border-radius: 8px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .controls-panel {
+            background: linear-gradient(135deg, rgba(0, 20, 40, 0.95), rgba(0, 10, 30, 0.9));
+            border: 2px solid #44aaff;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(68, 170, 255, 0.3);
+            backdrop-filter: blur(5px);
+            min-width: 420px;
+            max-width: 450px;
+            white-space: nowrap;
+        }
+
+        .stats-box {
+            background: linear-gradient(135deg, rgba(0, 40, 20, 0.8), rgba(0, 30, 15, 0.7));
+            border: 2px solid #00ff88;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+        }
+
+        .upgrades-box {
+            background: linear-gradient(135deg, rgba(40, 20, 0, 0.8), rgba(30, 15, 0, 0.7));
+            border: 2px solid #ffaa44;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 0 15px rgba(255, 170, 68, 0.2);
+        }
+
+        .controls-section {
+            background: linear-gradient(135deg, rgba(20, 0, 40, 0.8), rgba(15, 0, 30, 0.7));
+            border: 2px solid #aa44ff;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(170, 68, 255, 0.2);
+        }
+
+        .controls-panel div {
+            text-shadow: 0 0 5px currentColor;
+        }
+
+        .stats-box div {
+            text-shadow: 0 0 8px #00ff88;
+        }
+
+        .upgrades-box div {
+            text-shadow: 0 0 8px #ffaa44;
+        }
+
+        .controls-section div {
+            text-shadow: 0 0 8px #aa44ff;
+        }
+
+        .health-bar {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 210px;
+            height: 25px;
+            background: #333;
+            border: 2px solid #44aaff;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .health-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px #000;
+            z-index: 10;
+        }
+
+        /* Responsive design */
+        @media (max-width: 1300px) {
+            .game-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .controls-panel {
+                max-width: 800px;
+                width: 100%;
+                white-space: normal;
+            }
+
+            .stats-upgrades-row {
+                display: flex;
+                gap: 15px;
+                flex-wrap: wrap;
+            }
+
+            .stats-box, .upgrades-box {
+                flex: 1;
+                min-width: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .game-container {
+                gap: 15px;
+            }
+
+            .controls-panel {
+                font-size: 13px;
+                padding: 12px;
+                min-width: 0;
+                white-space: normal;
+            }
+
+            .stats-upgrades-row {
+                flex-direction: column;
+            }
+
+            .stats-box, .upgrades-box {
+                min-width: 0;
+            }
+
+            .health-bar {
+                width: 150px;
+                height: 20px;
+                top: 10px;
+                right: 10px;
+            }
+
+            .health-text {
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .controls-panel {
+                font-size: 11px;
+                padding: 10px;
+            }
+
+            .health-bar {
+                width: 120px;
+                height: 18px;
+            }
+
+            .health-text {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            <div class="health-bar">
+                <div class="health-fill" id="healthFill"></div>
+                <div class="health-text" id="healthText">100/100</div>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <div class="stats-upgrades-row">
+                <div class="stats-box">
+                    <div><strong>⭐ STATS ⭐</strong></div>
+                    <div>Score: <span id="score">0</span></div>
+                    <div>💎 Crystals: <span id="crystals">0</span></div>
+                    <div>🪙 Metals: <span id="metals">0</span></div>
+                    <div>❤️ Health: <span id="health">100</span></div>
+                    <div>⏱️ Time: <span id="gameTime">0</span>s</div>
+                </div>
+
+                <div class="upgrades-box">
+                    <div><strong>🔧 UPGRADES (Press 1-7) 🔧</strong></div>
+                    <div id="upgrade1">1. 🚀 Missiles (Lv.<span id="missileLevel">0</span>) - 3💎</div>
+                    <div id="upgrade2">2. ⚡ Fire Rate (Lv.<span id="fireRateLevel">0</span>) - 4🪙</div>
+                    <div id="upgrade3">3. 🛡️ Max Health (Lv.<span id="healthLevel">0</span>) - 2💎+2🪙</div>
+                    <div id="upgrade4">4. 💥 Damage x<span id="damageMultiplier">1.0</span> (Lv.<span id="damageLevel">0</span>) - 3💎+3🪙</div>
+                    <div id="upgrade5">5. ⬅️ Left Cannon (Lv.<span id="leftCannonLevel">0</span>) - 5💎+5🪙</div>
+                    <div id="upgrade6">6. ➡️ Right Cannon (Lv.<span id="rightCannonLevel">0</span>) - 5💎+5🪙</div>
+                    <div id="upgrade7">7. 🧲 Magnet (Lv.<span id="magnetLevel">0</span>/<span id="maxMagnetLevel">20</span>) - 4💎+4🪙</div>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <div><strong>🎮 CONTROLS 🎮</strong></div>
+                <div>WASD/Arrows: Move</div>
+                <div>Space: Shoot</div>
+                <div>1-7: Buy Upgrades</div>
+                <div style="font-size: 12px; color: #aaa;">🚀 Missiles: Destroy rocks with splash damage</div>
+                <div style="font-size: 12px; color: #aaa;">💎🪙 Shoot rocks to release treasures!</div>
+                <div style="font-size: 12px; color: #aaa;">💥 Damage Multiplier: Boosts all bullet damage</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // ============================================================================
+        // 🎮 GAME CONFIGURATION SECTION - Customize your gameplay experience! 🎮
+        // ============================================================================
+
+        const CONFIG = {
+            // 🎯 STARTING RESOURCES - What the player begins with
+            startingCrystals: 20,        // Starting crystal count - allows early upgrades
+            startingMetals: 20,          // Starting metal count - enables immediate progression
+            startingHealth: 100,         // Player's initial health points
+
+            // 💎🪙 RESOURCE COLLECTION - How much you gain per pickup
+            crystalReward: 1,            // Crystals gained per crystal collected (was 10)
+            metalReward: 1,              // Metals gained per metal collected (was 10)
+            crystalScore: 40,            // Score points for collecting a crystal
+            metalScore: 40,              // Score points for collecting a metal
+
+            // 🪨 ROCK PROPERTIES - Asteroid difficulty and progression
+            baseRockHealth: 5,           // Starting health of rocks at game start
+            rockHealthIncreaseRate: 0.1, // How much rock health increases (10% every 10 seconds)
+            rockHealthIncreaseInterval: 10, // Seconds between health increases
+            rockSpawnRate: 0.02,         // Probability per frame of spawning a rock (higher = more rocks)
+
+            // 💎🪙 TREASURE SPAWN RATES - How often rocks contain treasures
+            crystalContainChance: 0.3,   // 30% chance a rock contains a crystal
+            metalContainChance: 0.3,     // 30% chance a rock contains a metal
+
+            // ⚔️ COMBAT SETTINGS - Damage and weapon behavior
+            baseBulletDamage: 1,         // Base damage of main cannon before upgrades
+            damageMultiplierPerLevel: 0.2, // How much upgrade 4 multiplies damage (+20% per level)
+            missileBaseDamage: 1,       // Base missile damage (not affected by damage multiplier)
+            missileDamagePerLevel: 1,    // Additional missile damage per missile upgrade level
+
+            // 🏥 HEALTH SYSTEM - Player survivability
+            collisionDamage: 20,         // Damage taken when hitting a rock
+            healthUpgradeBonus: 25,      // Extra max health gained per health upgrade
+
+            // 🔫 WEAPON SYSTEMS - Firing rates and cannon mechanics
+            baseFireDelay: 200,          // Milliseconds between shots (lower = faster)
+            fireRateReduction: 30,       // MS reduced per fire rate upgrade level
+            minFireDelay: 100,           // Minimum time between shots (speed limit)
+            missileFireMultiplier: 5,    // Missiles fire this much slower than bullets
+            cannonsPerTenLevels: true,   // Whether to add extra cannons every 10 levels
+
+            // 🧲 MAGNET SYSTEM - Resource attraction mechanics
+            baseMagnetRange: 100,        // Base magnet attraction range
+            magnetRangePerLevel: 15,     // Additional range per magnet upgrade
+            baseMagnetStrength: 0.5,     // Base attraction force
+            magnetStrengthPerLevel: 0.4, // Additional strength per upgrade
+            maxMagnetLevel: 20,          // Maximum magnet upgrade level
+
+            // 💥 VISUAL EFFECTS - Eye candy intensity
+            screenShakeEnabled: true,    // Enable/disable screen shake effects
+            particleEffectsEnabled: true, // Enable/disable particle systems
+            trailEffectsEnabled: true,   // Enable/disable bullet/missile trails
+            explosionIntensity: 1.0,     // Multiplier for explosion visual effects
+
+            // 🌟 GAME PROGRESSION - Difficulty and scoring
+            scorePerRockDestroyed: 30,   // Points for destroying a rock
+            gameStartDelay: 0,           // Seconds before first rock spawns
+
+            // 🎨 VISUAL SETTINGS - Customize the look
+            starCount: 150,              // Number of background stars
+            enableGlowEffects: true,     // Whether objects glow and have shadows
+            enableAnimations: true       // Whether UI elements animate and pulse
+        };
+
+        // 📝 CONFIGURATION NOTES:
+        //
+        // 🎯 STARTING RESOURCES: Higher values make early game easier but may reduce challenge
+        // 💎 RESOURCE REWARDS: Lower values (like 1) make progression slower but more strategic
+        // 🪨 ROCK HEALTH: Higher base health makes rocks tankier, faster increase rate makes late game harder
+        // ⚔️ DAMAGE SYSTEM: Upgrade 4 now multiplies ALL bullet damage (main + cannons) but NOT missiles
+        // 🔫 FIRE RATE: Lower delays = faster shooting, but too low may cause performance issues
+        // 🧲 MAGNET: Higher range/strength makes resource collection easier
+        // 💥 EFFECTS: Disable for better performance on slower devices
+        //
+        // 🎮 BALANCING TIPS:
+        // - Reduce startingResources for harder early game
+        // - Increase rockHealthIncreaseRate for steeper difficulty curve
+        // - Lower resourceRewards for longer, more strategic gameplay
+        // - Adjust spawn rates to control game intensity
+        // ============================================================================
+
+        const game = {
+            player: { x: 400, y: 500, width: 30, height: 30, health: CONFIG.startingHealth, maxHealth: CONFIG.startingHealth },
+            bullets: [],
+            missiles: [],
+            asteroids: [],
+            resources: [], // Free-floating crystals and metals
+            particles: [],
+            stars: [],
+            explosions: [],
+            floatingText: [],
+            gameResources: { crystals: CONFIG.startingCrystals, metals: CONFIG.startingMetals, score: 0 },
+            upgrades: { missiles: 0, fireRate: 0, health: 0, damage: 0, leftCannon: 0, rightCannon: 0, magnet: 0 },
+            keys: {},
+            lastShot: 0,
+            lastMissile: 0,
+            gameOver: false,
+            startTime: Date.now(),
+            rockHealthMultiplier: 1.0,
+            screenShake: { x: 0, y: 0, intensity: 0 }
+        };
+
+        // Initialize starfield
+        function initStars() {
+            for (let i = 0; i < CONFIG.starCount; i++) {
+                game.stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2 + 0.5,
+                    speed: Math.random() * 1 + 0.5,
+                    opacity: Math.random() * 0.8 + 0.2,
+                    twinkle: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        // Particle system
+        function createParticles(x, y, count, color, type = 'explosion') {
+            for (let i = 0; i < count; i++) {
+                game.particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 60 + Math.random() * 40,
+                    maxLife: 60 + Math.random() * 40,
+                    size: Math.random() * 4 + 2,
+                    color: color,
+                    type: type
+                });
+            }
+        }
+
+        // Screen shake effect
+        function addScreenShake(intensity) {
+            game.screenShake.intensity = Math.max(game.screenShake.intensity, intensity);
+        }
+
+        // Input handling
+        document.addEventListener('keydown', (e) => {
+            game.keys[e.key.toLowerCase()] = true;
+
+            // Upgrades
+            if (e.key === '1' && game.gameResources.crystals >= 3) {
+                game.gameResources.crystals -= 3;
+                game.upgrades.missiles++;
+                createFloatingText(100, 100, '+1 Missile Level!', '#ff00ff');
+            }
+            if (e.key === '2' && game.gameResources.metals >= 4) {
+                game.gameResources.metals -= 4;
+                game.upgrades.fireRate++;
+                createFloatingText(100, 120, '+1 Fire Rate!', '#ffff00');
+            }
+            if (e.key === '3' && game.gameResources.crystals >= 2 && game.gameResources.metals >= 2) {
+                game.gameResources.crystals -= 2;
+                game.gameResources.metals -= 2;
+                game.upgrades.health++;
+                game.player.maxHealth += CONFIG.healthUpgradeBonus;
+                game.player.health += CONFIG.healthUpgradeBonus;
+                createFloatingText(100, 140, `+${CONFIG.healthUpgradeBonus} Max Health!`, '#00ff00');
+            }
+            if (e.key === '4' && game.gameResources.crystals >= 3 && game.gameResources.metals >= 3) {
+                game.gameResources.crystals -= 3;
+                game.gameResources.metals -= 3;
+                game.upgrades.damage++;
+                const newMultiplier = 1 + (game.upgrades.damage * CONFIG.damageMultiplierPerLevel);
+                createFloatingText(100, 160, `Damage x${newMultiplier.toFixed(1)}!`, '#ff4444');
+            }
+            if (e.key === '5' && game.gameResources.crystals >= 5 && game.gameResources.metals >= 5) {
+                game.gameResources.crystals -= 5;
+                game.gameResources.metals -= 5;
+                game.upgrades.leftCannon++;
+                createFloatingText(100, 180, 'Left Cannon +1!', '#44ff44');
+            }
+            if (e.key === '6' && game.gameResources.crystals >= 5 && game.gameResources.metals >= 5) {
+                game.gameResources.crystals -= 5;
+                game.gameResources.metals -= 5;
+                game.upgrades.rightCannon++;
+                createFloatingText(100, 200, 'Right Cannon +1!', '#44ff44');
+            }
+            if (e.key === '7' && game.gameResources.crystals >= 4 && game.gameResources.metals >= 4 && game.upgrades.magnet < CONFIG.maxMagnetLevel) {
+                game.gameResources.crystals -= 4;
+                game.gameResources.metals -= 4;
+                game.upgrades.magnet++;
+                createFloatingText(100, 220, 'Magnet +1!', '#ffaa00');
+            }
+
+            if (game.gameOver && (e.key === 'Enter' || e.key === ' ')) {
+                resetGame();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            game.keys[e.key.toLowerCase()] = false;
+        });
+
+        function resetGame() {
+            game.player.x = 400;
+            game.player.y = 500;
+            game.player.health = game.player.maxHealth;
+            game.bullets = [];
+            game.missiles = [];
+            game.asteroids = [];
+            game.resources = [];
+            game.particles = [];
+            game.explosions = [];
+            game.floatingText = [];
+            game.gameResources = {crystals: CONFIG.startingCrystals, metals: CONFIG.startingMetals, score: 0};
+            game.gameOver = false;
+            game.startTime = Date.now();
+            game.rockHealthMultiplier = 1.0;
+            game.screenShake = { x: 0, y: 0, intensity: 0 };
+        }
+
+        function createFloatingText(x, y, text, color) {
+            game.floatingText.push({
+                x: x, y: y, text: text, color: color, life: 90, maxLife: 90,
+                scale: 1.5, vx: (Math.random() - 0.5) * 2, vy: -2
+            });
+        }
+
+        function createBullet(x, damage, yOffset = 0) {
+            return {
+                x: x, y: game.player.y + yOffset, width: 4, height: 10, speed: 8, damage: damage,
+                color: '#ffff00', trail: []
+            };
+        }
+
+        function createMissile(x, level) {
+            return {
+                x: x, y: game.player.y, width: 8, height: 16, speed: 3,
+                damage: CONFIG.missileBaseDamage + (level * CONFIG.missileDamagePerLevel),
+                splashRadius: 100 + (level * 30),
+                target: null, seekSpeed: 1.0,
+                color: '#ff00ff', trail: []
+            };
+        }
+
+        function createAsteroid() {
+            const size = 25 + Math.random() * 25;
+            const health = Math.ceil(CONFIG.baseRockHealth * game.rockHealthMultiplier);
+
+            // Some rocks contain treasures based on config chances
+            let containsCrystal = Math.random() < CONFIG.crystalContainChance;
+            let containsMetal = Math.random() < CONFIG.metalContainChance;
+
+            return {
+                x: Math.random() * (canvas.width - size), y: -size,
+                width: size, height: size, speed: 1 + Math.random() * 2,
+                type: 'rock', health: health, maxHealth: health,
+                containsCrystal: containsCrystal,
+                containsMetal: containsMetal,
+                rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1
+            };
+        }
+
+        function createFreeResource(x, y, type) {
+            return {
+                x: x, y: y, width: 15, height: 15,
+                type: type, speed: 2 + Math.random(),
+                magnetized: false, rotation: 0,
+                rotationSpeed: 0.1 + Math.random() * 0.1,
+                glow: 0, glowDirection: 1
+            };
+        }
+
+        function checkCollision(a, b) {
+            return a.x < b.x + b.width && a.x + a.width > b.x &&
+                   a.y < b.y + b.height && a.y + a.height > b.y;
+        }
+
+        function update() {
+            if (game.gameOver) return;
+
+            // Update screen shake
+            if (game.screenShake.intensity > 0) {
+                game.screenShake.x = (Math.random() - 0.5) * game.screenShake.intensity;
+                game.screenShake.y = (Math.random() - 0.5) * game.screenShake.intensity;
+                game.screenShake.intensity *= 0.9;
+            }
+
+            // Update rock health multiplier every 10 seconds
+            const elapsedSeconds = Math.floor((Date.now() - game.startTime) / 1000);
+            const newMultiplier = 1.0 + (Math.floor(elapsedSeconds / CONFIG.rockHealthIncreaseInterval) * CONFIG.rockHealthIncreaseRate);
+            if (newMultiplier !== game.rockHealthMultiplier) {
+                game.rockHealthMultiplier = newMultiplier;
+                createFloatingText(canvas.width / 2, 100, `Rocks +${Math.round((newMultiplier - 1) * 100)}% Health!`, '#ff0000');
+                addScreenShake(5);
+            }
+
+            // Player movement
+            const speed = 5;
+            if (game.keys['a'] || game.keys['arrowleft']) {
+                game.player.x = Math.max(0, game.player.x - speed);
+            }
+            if (game.keys['d'] || game.keys['arrowright']) {
+                game.player.x = Math.min(canvas.width - game.player.width, game.player.x + speed);
+            }
+            if (game.keys['w'] || game.keys['arrowup']) {
+                game.player.y = Math.max(0, game.player.y - speed);
+            }
+            if (game.keys['s'] || game.keys['arrowdown']) {
+                game.player.y = Math.min(canvas.height - game.player.height, game.player.y + speed);
+            }
+
+            // Shooting
+            const now = Date.now();
+            const fireDelay = Math.max(CONFIG.minFireDelay, CONFIG.baseFireDelay - game.upgrades.fireRate * CONFIG.fireRateReduction);
+
+            if (game.keys[' '] && now - game.lastShot > fireDelay) {
+                // Calculate damage multiplier from upgrade 4 (affects bullets only, not missiles)
+                const damageMultiplier = 1 + (game.upgrades.damage * CONFIG.damageMultiplierPerLevel);
+
+                // Regular bullets with multiplier
+                const mainDamage = CONFIG.baseBulletDamage * damageMultiplier;
+                game.bullets.push(createBullet(game.player.x + 15, mainDamage));
+
+                // Multiple left cannons with multiplier
+                const leftCannons = CONFIG.cannonsPerTenLevels ?
+                    Math.floor(game.upgrades.leftCannon / 10) + (game.upgrades.leftCannon % 10 > 0 ? 1 : 0) : 1;
+                if (game.upgrades.leftCannon > 0) {
+                    for (let i = 0; i < leftCannons; i++) {
+                        const xOffset = -5 - (i * 8);
+                        const yOffset = i * 5;
+                        const cannonDamage = game.upgrades.leftCannon * damageMultiplier;
+                        game.bullets.push(createBullet(game.player.x + xOffset, cannonDamage, yOffset));
+                    }
+                }
+
+                // Multiple right cannons with multiplier
+                const rightCannons = CONFIG.cannonsPerTenLevels ?
+                    Math.floor(game.upgrades.rightCannon / 10) + (game.upgrades.rightCannon % 10 > 0 ? 1 : 0) : 1;
+                if (game.upgrades.rightCannon > 0) {
+                    for (let i = 0; i < rightCannons; i++) {
+                        const xOffset = 35 + (i * 8);
+                        const yOffset = i * 5;
+                        const cannonDamage = game.upgrades.rightCannon * damageMultiplier;
+                        game.bullets.push(createBullet(game.player.x + xOffset, cannonDamage, yOffset));
+                    }
+                }
+
+                game.lastShot = now;
+            }
+
+            // Missile shooting
+            const missileDelay = fireDelay * CONFIG.missileFireMultiplier;
+            if (game.upgrades.missiles > 0 && game.keys[' '] && now - game.lastMissile > missileDelay) {
+                game.missiles.push(createMissile(game.player.x + 15, game.upgrades.missiles));
+                game.lastMissile = now;
+            }
+
+            // Update stars
+            game.stars.forEach(star => {
+                star.y += star.speed;
+                star.twinkle += 0.1;
+                if (star.y > canvas.height) {
+                    star.y = -5;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+
+            // Update bullets
+            game.bullets = game.bullets.filter(bullet => {
+                // Add trail effect
+                bullet.trail.push({ x: bullet.x, y: bullet.y, life: 20 });
+                bullet.trail = bullet.trail.filter(t => t.life-- > 0);
+
+                bullet.y -= bullet.speed;
+                return bullet.y > -10;
+            });
+
+            // Update missiles
+            game.missiles = game.missiles.filter(missile => {
+                // Add trail effect
+                missile.trail.push({ x: missile.x, y: missile.y, life: 30 });
+                missile.trail = missile.trail.filter(t => t.life-- > 0);
+
+                // Find nearest rock to target
+                if (!missile.target) {
+                    let nearestDist = Infinity;
+                    game.asteroids.forEach(asteroid => {
+                        const dist = Math.sqrt(
+                            Math.pow(asteroid.x - missile.x, 2) + Math.pow(asteroid.y - missile.y, 2)
+                        );
+                        if (dist < nearestDist) {
+                            nearestDist = dist;
+                            missile.target = asteroid;
+                        }
+                    });
+                }
+
+                // Move towards target
+                if (missile.target && game.asteroids.includes(missile.target)) {
+                    const dx = missile.target.x + missile.target.width/2 - missile.x;
+                    const dy = missile.target.y + missile.target.height/2 - missile.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+
+                    if (dist > 0) {
+                        missile.x += (dx/dist) * missile.speed * missile.seekSpeed;
+                        missile.y += (dy/dist) * missile.speed * missile.seekSpeed;
+                    }
+                } else {
+                    missile.y -= missile.speed;
+                }
+
+                return missile.y > -50 && missile.x > -50 && missile.x < canvas.width + 50;
+            });
+
+            // Spawn asteroids
+            if (Math.random() < CONFIG.rockSpawnRate) {
+                game.asteroids.push(createAsteroid());
+            }
+
+            // Update asteroids
+            game.asteroids = game.asteroids.filter(asteroid => {
+                asteroid.y += asteroid.speed;
+                asteroid.rotation += asteroid.rotationSpeed;
+                return asteroid.y < canvas.height + 50;
+            });
+
+            // Update free resources
+            game.resources = game.resources.filter(resource => {
+                resource.y += resource.speed;
+                resource.rotation += resource.rotationSpeed;
+                resource.glow += resource.glowDirection * 0.1;
+                if (resource.glow > 1) resource.glowDirection = -1;
+                if (resource.glow < 0) resource.glowDirection = 1;
+
+                // Magnet effect
+                if (game.upgrades.magnet > 0) {
+                    const playerCenterX = game.player.x + game.player.width / 2;
+                    const playerCenterY = game.player.y + game.player.height / 2;
+                    const resourceCenterX = resource.x + resource.width / 2;
+                    const resourceCenterY = resource.y + resource.height / 2;
+
+                    const dx = playerCenterX - resourceCenterX;
+                    const dy = playerCenterY - resourceCenterY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const magnetRange = CONFIG.baseMagnetRange + (game.upgrades.magnet * CONFIG.magnetRangePerLevel);
+
+                    if (distance < magnetRange && distance > 0) {
+                        const magnetStrength = CONFIG.baseMagnetStrength + (game.upgrades.magnet * CONFIG.magnetStrengthPerLevel);
+                        const pullForce = magnetStrength * (1 - distance / magnetRange);
+
+                        resource.x += (dx / distance) * pullForce;
+                        resource.y += (dy / distance) * pullForce;
+                        resource.magnetized = true;
+                    }
+                }
+
+                return resource.y < canvas.height + 50;
+            });
+
+            // Update particles
+            game.particles = game.particles.filter(particle => {
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.vx *= 0.98;
+                particle.vy *= 0.98;
+                particle.life--;
+                particle.size *= 0.99;
+                return particle.life > 0;
+            });
+
+            // Missile collisions
+            for (let i = game.missiles.length - 1; i >= 0; i--) {
+                const missile = game.missiles[i];
+                let hit = false;
+
+                for (let j = 0; j < game.asteroids.length; j++) {
+                    const rock = game.asteroids[j];
+
+                    if (checkCollision(missile, rock)) {
+                        const centerX = rock.x + rock.width/2;
+                        const centerY = rock.y + rock.height/2;
+
+                        // Damage and effects
+                        rock.health -= missile.damage;
+                        createFloatingText(centerX, centerY, `-${missile.damage}`, '#ff0000');
+                        createParticles(centerX, centerY, 15, '#ff00ff');
+                        addScreenShake(8);
+
+                        // Splash damage
+                        const splashDamage = Math.floor(missile.damage / 2);
+                        let splashCount = 0;
+
+                        game.asteroids.forEach(otherRock => {
+                            if (otherRock !== rock) {
+                                const dist = Math.sqrt(
+                                    Math.pow(otherRock.x + otherRock.width/2 - centerX, 2) +
+                                    Math.pow(otherRock.y + otherRock.height/2 - centerY, 2)
+                                );
+
+                                if (dist <= missile.splashRadius) {
+                                    otherRock.health -= splashDamage;
+                                    createFloatingText(otherRock.x, otherRock.y, `-${splashDamage}`, '#ff88ff');
+                                    splashCount++;
+                                }
+                            }
+                        });
+
+                        // Create explosion
+                        game.explosions.push({
+                            x: centerX, y: centerY, radius: missile.splashRadius,
+                            life: 60, maxLife: 60, splashDamage: splashDamage
+                        });
+
+                        createFloatingText(centerX, centerY - 30, `BOOM! +${splashCount} hits`, '#ffff00');
+
+                        game.missiles.splice(i, 1);
+                        hit = true;
+                        break;
+                    }
+                }
+
+                if (hit) break;
+            }
+
+            // Bullet collisions
+            for (let i = game.bullets.length - 1; i >= 0; i--) {
+                for (let j = game.asteroids.length - 1; j >= 0; j--) {
+                    if (checkCollision(game.bullets[i], game.asteroids[j])) {
+                        const asteroid = game.asteroids[j];
+                        const bullet = game.bullets[i];
+
+                        asteroid.health -= bullet.damage;
+                        createParticles(bullet.x, bullet.y, 5, bullet.color);
+                        game.bullets.splice(i, 1);
+
+                        if (asteroid.health <= 0) {
+                            game.gameResources.score += CONFIG.scorePerRockDestroyed;
+                            // Release treasures!
+                            if (asteroid.containsCrystal) {
+                                game.resources.push(createFreeResource(asteroid.x + asteroid.width/2, asteroid.y + asteroid.height/2, 'crystal'));
+                                createFloatingText(asteroid.x, asteroid.y, '💎 Crystal!', '#00ffff');
+                            }
+                            if (asteroid.containsMetal) {
+                                game.resources.push(createFreeResource(asteroid.x + asteroid.width/2, asteroid.y + asteroid.height/2, 'metal'));
+                                createFloatingText(asteroid.x, asteroid.y, '🪙 Metal!', '#ffaa00');
+                            }
+                            createParticles(asteroid.x + asteroid.width/2, asteroid.y + asteroid.height/2, 20, '#888888');
+                            addScreenShake(5);
+                            game.asteroids.splice(j, 1);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Player collisions with resources
+            for (let i = game.resources.length - 1; i >= 0; i--) {
+                if (checkCollision(game.player, game.resources[i])) {
+                    const resource = game.resources[i];
+
+                    if (resource.type === 'crystal') {
+                        game.gameResources.crystals += CONFIG.crystalReward;
+                        game.gameResources.score += CONFIG.crystalScore;
+                        createFloatingText(resource.x, resource.y, `+${CONFIG.crystalReward} 💎`, '#00ffff');
+                        createParticles(resource.x, resource.y, 8, '#00ffff');
+                    } else if (resource.type === 'metal') {
+                        game.gameResources.metals += CONFIG.metalReward;
+                        game.gameResources.score += CONFIG.metalScore;
+                        createFloatingText(resource.x, resource.y, `+${CONFIG.metalReward} 🪙`, '#ffaa00');
+                        createParticles(resource.x, resource.y, 8, '#ffaa00');
+                    }
+
+                    game.resources.splice(i, 1);
+                }
+            }
+
+            // Player collisions with asteroids
+            for (let i = game.asteroids.length - 1; i >= 0; i--) {
+                if (checkCollision(game.player, game.asteroids[i])) {
+                    const asteroid = game.asteroids[i];
+                    game.player.health -= CONFIG.collisionDamage;
+                    createFloatingText(asteroid.x, asteroid.y, `-${CONFIG.collisionDamage} HP`, '#ff0000');
+                    createParticles(game.player.x + game.player.width/2, game.player.y + game.player.height/2, 10, '#ff0000');
+                    addScreenShake(10);
+                    game.asteroids.splice(i, 1);
+
+                    if (game.player.health <= 0) {
+                        game.gameOver = true;
+                    }
+                }
+            }
+
+            // Remove destroyed asteroids
+            game.asteroids = game.asteroids.filter(asteroid => {
+                if (asteroid.health <= 0) {
+                    game.gameResources.score += CONFIG.scorePerRockDestroyed;
+                    // Release treasures!
+                    if (asteroid.containsCrystal) {
+                        game.resources.push(createFreeResource(asteroid.x + asteroid.width/2, asteroid.y + asteroid.height/2, 'crystal'));
+                        createFloatingText(asteroid.x, asteroid.y, '💎 Crystal!', '#00ffff');
+                    }
+                    if (asteroid.containsMetal) {
+                        game.resources.push(createFreeResource(asteroid.x + asteroid.width/2, asteroid.y + asteroid.height/2, 'metal'));
+                        createFloatingText(asteroid.x, asteroid.y, '🪙 Metal!', '#ffaa00');
+                    }
+                    createParticles(asteroid.x + asteroid.width/2, asteroid.y + asteroid.height/2, 20, '#888888');
+                    addScreenShake(5);
+                    return false;
+                }
+                return true;
+            });
+
+            // Update visual effects
+            game.floatingText = game.floatingText.filter(text => {
+                text.x += text.vx;
+                text.y += text.vy;
+                text.vy *= 0.98;
+                text.life--;
+                text.scale *= 0.995;
+                return text.life > 0;
+            });
+
+            game.explosions = game.explosions.filter(explosion => {
+                explosion.life--;
+                return explosion.life > 0;
+            });
+
+            updateUI();
+        }
+
+        function updateUI() {
+            const elapsedSeconds = Math.floor((Date.now() - game.startTime) / 1000);
+            document.getElementById('gameTime').textContent = elapsedSeconds;
+            document.getElementById('score').textContent = game.gameResources.score;
+            document.getElementById('crystals').textContent = game.gameResources.crystals;
+            document.getElementById('metals').textContent = game.gameResources.metals;
+            document.getElementById('health').textContent = Math.max(0, game.player.health);
+
+            // Update health bar
+            const healthPercent = Math.max(0, game.player.health) / game.player.maxHealth;
+            const healthFill = document.getElementById('healthFill');
+            const healthText = document.getElementById('healthText');
+
+            healthFill.style.width = (healthPercent * 100) + '%';
+            healthText.textContent = `${Math.max(0, game.player.health)}/${game.player.maxHealth}`;
+
+            // Health bar color
+            if (healthPercent > 0.5) {
+                healthFill.style.background = 'linear-gradient(90deg, #00ff00, #88ff88)';
+            } else if (healthPercent > 0.25) {
+                healthFill.style.background = 'linear-gradient(90deg, #ffff00, #ffff88)';
+            } else {
+                healthFill.style.background = 'linear-gradient(90deg, #ff0000, #ff8888)';
+            }
+
+            document.getElementById('missileLevel').textContent = game.upgrades.missiles;
+            document.getElementById('fireRateLevel').textContent = game.upgrades.fireRate;
+            document.getElementById('healthLevel').textContent = game.upgrades.health;
+            document.getElementById('damageLevel').textContent = game.upgrades.damage;
+            document.getElementById('damageMultiplier').textContent = (1 + game.upgrades.damage * CONFIG.damageMultiplierPerLevel).toFixed(1);
+            document.getElementById('leftCannonLevel').textContent = game.upgrades.leftCannon;
+            document.getElementById('rightCannonLevel').textContent = game.upgrades.rightCannon;
+            document.getElementById('magnetLevel').textContent = game.upgrades.magnet;
+            document.getElementById('maxMagnetLevel').textContent = CONFIG.maxMagnetLevel;
+
+            document.getElementById('upgrade1').style.color = game.gameResources.crystals >= 3 ? '#00ff88' : '#666666';
+            document.getElementById('upgrade2').style.color = game.gameResources.metals >= 4 ? '#00ff88' : '#666666';
+            document.getElementById('upgrade3').style.color = (game.gameResources.crystals >= 2 && game.gameResources.metals >= 2) ? '#00ff88' : '#666666';
+            document.getElementById('upgrade4').style.color = (game.gameResources.crystals >= 3 && game.gameResources.metals >= 3) ? '#00ff88' : '#666666';
+            document.getElementById('upgrade5').style.color = (game.gameResources.crystals >= 5 && game.gameResources.metals >= 5) ? '#00ff88' : '#666666';
+            document.getElementById('upgrade6').style.color = (game.gameResources.crystals >= 5 && game.gameResources.metals >= 5) ? '#00ff88' : '#666666';
+            document.getElementById('upgrade7').style.color = (game.gameResources.crystals >= 4 && game.gameResources.metals >= 4 && game.upgrades.magnet < CONFIG.maxMagnetLevel) ? '#00ff88' : '#666666';
+        }
+
+        function drawDiamond(x, y, size, glow = 0) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Glow effect
+            if (glow > 0) {
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 20 + glow * 10;
+            }
+
+            // Diamond shape
+            ctx.beginPath();
+            ctx.moveTo(0, -size);
+            ctx.lineTo(size * 0.6, 0);
+            ctx.lineTo(0, size);
+            ctx.lineTo(-size * 0.6, 0);
+            ctx.closePath();
+
+            // Fill with gradient
+            const gradient = ctx.createLinearGradient(-size, -size, size, size);
+            gradient.addColorStop(0, '#aaffff');
+            gradient.addColorStop(0.5, '#00ffff');
+            gradient.addColorStop(1, '#0088aa');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Shine effect
+            ctx.beginPath();
+            ctx.moveTo(-size * 0.3, -size * 0.7);
+            ctx.lineTo(size * 0.1, -size * 0.3);
+            ctx.lineTo(-size * 0.1, size * 0.1);
+            ctx.lineTo(-size * 0.5, -size * 0.3);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawCoin(x, y, size, rotation, glow = 0) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+
+            // Glow effect
+            if (glow > 0) {
+                ctx.shadowColor = '#ffaa00';
+                ctx.shadowBlur = 15 + glow * 8;
+            }
+
+            // Coin outer ring
+            ctx.beginPath();
+            ctx.arc(0, 0, size, 0, Math.PI * 2);
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
+            gradient.addColorStop(0, '#ffdd44');
+            gradient.addColorStop(0.7, '#ffaa00');
+            gradient.addColorStop(1, '#cc8800');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Inner design
+            ctx.beginPath();
+            ctx.arc(0, 0, size * 0.7, 0, Math.PI * 2);
+            ctx.fillStyle = '#cc8800';
+            ctx.fill();
+
+            // Center symbol
+            ctx.fillStyle = '#ffdd44';
+            ctx.font = `${size}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('$', 0, 0);
+
+            ctx.restore();
+        }
+
+        function drawSpaceship(x, y, width, height) {
+            ctx.save();
+            ctx.translate(x + width/2, y + height/2);
+
+            // Ship body
+            ctx.beginPath();
+            ctx.moveTo(0, -height/2);
+            ctx.lineTo(width/3, height/2);
+            ctx.lineTo(-width/3, height/2);
+            ctx.closePath();
+
+            const gradient = ctx.createLinearGradient(0, -height/2, 0, height/2);
+            gradient.addColorStop(0, '#aaeeff');
+            gradient.addColorStop(0.5, '#44aaff');
+            gradient.addColorStop(1, '#2288dd');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Engine glow
+            ctx.beginPath();
+            ctx.ellipse(0, height/2, width/6, height/8, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff4444';
+            ctx.fill();
+
+            // Cockpit
+            ctx.beginPath();
+            ctx.arc(0, -height/4, width/8, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function render() {
+            // Apply screen shake
+            ctx.save();
+            ctx.translate(game.screenShake.x, game.screenShake.y);
+
+            // Background gradient
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGradient.addColorStop(0, '#000022');
+            bgGradient.addColorStop(0.5, '#001133');
+            bgGradient.addColorStop(1, '#000011');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (!game.gameOver) {
+                // Draw stars
+                game.stars.forEach(star => {
+                    ctx.globalAlpha = star.opacity + Math.sin(star.twinkle) * 0.3;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+
+                // Draw player ship
+                drawSpaceship(game.player.x, game.player.y, game.player.width, game.player.height);
+
+                // Draw magnet field
+                if (game.upgrades.magnet > 0) {
+                    const playerCenterX = game.player.x + game.player.width / 2;
+                    const playerCenterY = game.player.y + game.player.height / 2;
+                    const magnetRange = CONFIG.baseMagnetRange + (game.upgrades.magnet * CONFIG.magnetRangePerLevel);
+
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.globalAlpha = 0.1 + (game.upgrades.magnet * 0.02);
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(playerCenterX, playerCenterY, magnetRange, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+
+                // Draw cannons - Multiple cannons for every 10 levels
+                const leftCannons = Math.floor(game.upgrades.leftCannon / 10) + (game.upgrades.leftCannon % 10 > 0 ? 1 : 0);
+                if (game.upgrades.leftCannon > 0) {
+                    for (let i = 0; i < leftCannons; i++) {
+                        const xOffset = -8 - (i * 8);
+                        const yOffset = i * 5;
+
+                        const gradient = ctx.createLinearGradient(0, 0, 0, 20);
+                        gradient.addColorStop(0, '#ff6666');
+                        gradient.addColorStop(1, '#aa2222');
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(game.player.x + xOffset, game.player.y + 5 + yOffset, 6, 20);
+                    }
+                }
+
+                const rightCannons = Math.floor(game.upgrades.rightCannon / 10) + (game.upgrades.rightCannon % 10 > 0 ? 1 : 0);
+                if (game.upgrades.rightCannon > 0) {
+                    for (let i = 0; i < rightCannons; i++) {
+                        const xOffset = 32 + (i * 8);
+                        const yOffset = i * 5;
+
+                        const gradient = ctx.createLinearGradient(0, 0, 0, 20);
+                        gradient.addColorStop(0, '#ff6666');
+                        gradient.addColorStop(1, '#aa2222');
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(game.player.x + xOffset, game.player.y + 5 + yOffset, 6, 20);
+                    }
+                }
+
+                // Draw bullets with trails
+                game.bullets.forEach(bullet => {
+                    // Trail
+                    bullet.trail.forEach((t, i) => {
+                        ctx.globalAlpha = (t.life / 20) * 0.5;
+                        ctx.fillStyle = bullet.color;
+                        ctx.fillRect(t.x, t.y, bullet.width * (t.life / 20), bullet.height * (t.life / 20));
+                    });
+                    ctx.globalAlpha = 1;
+
+                    // Bullet with glow
+                    ctx.shadowColor = bullet.color;
+                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = bullet.color;
+                    ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                    ctx.shadowBlur = 0;
+                });
+
+                // Draw missiles with trails
+                game.missiles.forEach(missile => {
+                    // Trail
+                    missile.trail.forEach((t, i) => {
+                        ctx.globalAlpha = (t.life / 30) * 0.7;
+                        ctx.fillStyle = missile.color;
+                        ctx.fillRect(t.x, t.y, missile.width * (t.life / 30), missile.height * (t.life / 30));
+                    });
+                    ctx.globalAlpha = 1;
+
+                    // Missile with glow
+                    ctx.shadowColor = missile.color;
+                    ctx.shadowBlur = 15;
+                    ctx.fillStyle = missile.color;
+                    ctx.fillRect(missile.x - 4, missile.y, missile.width, missile.height);
+                    ctx.shadowBlur = 0;
+
+                    // Targeting line
+                    if (missile.target && game.asteroids.includes(missile.target)) {
+                        ctx.strokeStyle = missile.color;
+                        ctx.globalAlpha = 0.3;
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]);
+                        ctx.beginPath();
+                        ctx.moveTo(missile.x, missile.y + missile.height/2);
+                        ctx.lineTo(missile.target.x + missile.target.width/2, missile.target.y + missile.target.height/2);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.globalAlpha = 1;
+                    }
+                });
+
+                // Draw asteroids (rocks) with rotation and texture
+                game.asteroids.forEach(asteroid => {
+                    ctx.save();
+                    ctx.translate(asteroid.x + asteroid.width/2, asteroid.y + asteroid.height/2);
+                    ctx.rotate(asteroid.rotation);
+
+                    // Rock gradient
+                    const rockGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, asteroid.width/2);
+                    rockGradient.addColorStop(0, '#aaaaaa');
+                    rockGradient.addColorStop(0.5, '#777777');
+                    rockGradient.addColorStop(1, '#444444');
+                    ctx.fillStyle = rockGradient;
+
+                    // Irregular rock shape
+                    ctx.beginPath();
+                    const points = 8;
+                    for (let i = 0; i < points; i++) {
+                        const angle = (i / points) * Math.PI * 2;
+                        const radius = (asteroid.width/2) * (0.8 + Math.sin(angle * 3) * 0.2);
+                        const x = Math.cos(angle) * radius;
+                        const y = Math.sin(angle) * radius;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Treasure indicators
+                    if (asteroid.containsCrystal) {
+                        ctx.fillStyle = '#00ffff';
+                        ctx.font = '12px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('💎', -asteroid.width/4, -5);
+                    }
+                    if (asteroid.containsMetal) {
+                        ctx.fillStyle = '#ffaa00';
+                        ctx.font = '12px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('🪙', asteroid.width/4, -5);
+                    }
+
+                    ctx.restore();
+
+                    // Health bar
+                    if (asteroid.health < asteroid.maxHealth) {
+                        const healthPercent = asteroid.health / asteroid.maxHealth;
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(asteroid.x, asteroid.y - 12, asteroid.width, 6);
+                        ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+                        ctx.fillRect(asteroid.x, asteroid.y - 12, asteroid.width * healthPercent, 6);
+                    }
+                });
+
+                // Draw free resources
+                game.resources.forEach(resource => {
+                    if (resource.type === 'crystal') {
+                        drawDiamond(resource.x + resource.width/2, resource.y + resource.height/2, resource.width/2, resource.glow);
+                    } else if (resource.type === 'metal') {
+                        drawCoin(resource.x + resource.width/2, resource.y + resource.height/2, resource.width/2, resource.rotation, resource.glow);
+                    }
+                });
+
+                // Draw particles
+                game.particles.forEach(particle => {
+                    ctx.globalAlpha = particle.life / particle.maxLife;
+                    ctx.fillStyle = particle.color;
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+
+                // Draw explosions
+                game.explosions.forEach(explosion => {
+                    const alpha = explosion.life / explosion.maxLife;
+
+                    // Explosion rings
+                    for (let i = 0; i < 3; i++) {
+                        ctx.globalAlpha = alpha * (1 - i * 0.3);
+                        ctx.strokeStyle = ['#ff00ff', '#ff44ff', '#ff88ff'][i];
+                        ctx.lineWidth = 8 - i * 2;
+                        ctx.beginPath();
+                        ctx.arc(explosion.x, explosion.y, explosion.radius + i * 20, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    // Center flash
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(explosion.x, explosion.y, 15, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.globalAlpha = 1;
+                });
+
+                // Draw floating text
+                game.floatingText.forEach(text => {
+                    const alpha = text.life / text.maxLife;
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = text.color;
+                    ctx.font = `bold ${14 * text.scale}px Courier New`;
+                    ctx.textAlign = 'center';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeText(text.text, text.x, text.y);
+                    ctx.fillText(text.text, text.x, text.y);
+                    ctx.textAlign = 'left';
+                });
+                ctx.globalAlpha = 1;
+            } else {
+                // Game over screen with effects
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Animated game over text
+                const time = Date.now() * 0.003;
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2 - 80);
+                ctx.scale(1 + Math.sin(time) * 0.1, 1 + Math.cos(time) * 0.1);
+
+                ctx.fillStyle = '#ff4444';
+                ctx.font = 'bold 48px Courier New';
+                ctx.textAlign = 'center';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 4;
+                ctx.strokeText('GAME OVER', 0, 0);
+                ctx.fillText('GAME OVER', 0, 0);
+                ctx.restore();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '24px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Final Score: ${game.gameResources.score}`, canvas.width / 2, canvas.height / 2 - 20);
+                ctx.fillText(`💎 ${game.gameResources.crystals} | 🪙 ${game.gameResources.metals}`, canvas.width / 2, canvas.height / 2 + 20);
+
+                ctx.fillStyle = '#aaaaaa';
+                ctx.font = '18px Courier New';
+                ctx.fillText('Press ENTER or SPACE to restart', canvas.width / 2, canvas.height / 2 + 80);
+                ctx.fillText('(Upgrades kept!)', canvas.width / 2, canvas.height / 2 + 110);
+
+                ctx.textAlign = 'left';
+            }
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize and start game
+        initStars();
+        console.log('Starting Enhanced Cosmic Harvester...');
+        gameLoop();
+    </script>
+</body>
+</html>

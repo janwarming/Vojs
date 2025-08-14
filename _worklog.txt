@@ -3,4 +3,3 @@ Proxy Broser shall have a image tab that shows all image files, and a video tab 
 Search Engine does not work with DuckDuckGo
 
 Desktop can only show 5 columns of icons
-
